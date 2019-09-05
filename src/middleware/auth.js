@@ -51,4 +51,4 @@ module.exports = capability => {
       next("Invalid User ID / Password");
     }
   }
-}
+};

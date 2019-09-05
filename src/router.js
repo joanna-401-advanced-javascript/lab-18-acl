@@ -48,6 +48,6 @@ apiRouter.post('/article', auth('create'), (req, res, next) => {
       res.send(article);
     })
     .catch(next)
-})
+});
 
 module.exports = apiRouter;
