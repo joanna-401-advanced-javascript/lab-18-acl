@@ -15,21 +15,35 @@ const userSchema = mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   email: { type: String, required: true },
-  role: { type: String, required: true, default: 'user', enum: ['user', 'admin', 'editor'] }
+  role: { type: String, required: true, default: 'user', enum: ['user', 'admin', 'editor'] },
 }, {
   toObject: {
-    virtuals: true
+    virtuals: true,
   },
   toJSON: {
-    virtuals: true
-  }
+    virtuals: true,
+  },
 });
 
-const capabilities = {
-  admin: ['create', 'read', 'update', 'delete'],
-  editor: ['create', 'read', 'update'],
-  user: ['read'],
-};
+userSchema.virtual('capabilities', {
+  ref: 'roles',
+  localField: 'role',
+  foreignField: 'name',
+  justOne: false,
+});
+
+userSchema.pre('find', function() {
+  try {
+    this.populate('capabilities');
+  }
+  catch(e) { console.log('Find Error', e); }
+});
+
+// const capabilities = {
+//   admin: ['create', 'read', 'update', 'delete'],
+//   editor: ['create', 'read', 'update'],
+//   user: ['read'],
+// };
 
 userSchema.pre('save', async function () {
   if (this.isModified('password')) {
@@ -87,7 +101,7 @@ userSchema.statics.authenticateBasic = function (auth) {
 userSchema.methods.comparePassword = function (password) {
   return bcrypt.compare(password, this.password)
     .then(valid => valid ? this : null);
-}
+};
 
 // refactoring generate token method to check for user capabilites and expiration variablw
 userSchema.methods.generateToken = function (type) {
@@ -98,20 +112,23 @@ userSchema.methods.generateToken = function (type) {
   };
   let options = {};
   if (type !== 'key' && !!TOKEN_EXPIRE) {
-    options = { expiresIn: TOKEN_EXPIRE }
+    options = { expiresIn: TOKEN_EXPIRE };
   }
 
   console.log(token, options);
   return jwt.sign(token, SECRET, options);
-}
+};
 
 // Method for checking a specify users access controls
+//---------
+// TODO:
+//---------
 userSchema.methods.can = function (capability) {
-  return capabilities[this.role].includes(capability)
-}
+  return capabilities[this.role].includes(capability);
+};
 
 userSchema.methods.generateKey = function () {
   return this.generateToken('key');
-}
+};
 
 module.exports = mongoose.model('users', userSchema);
